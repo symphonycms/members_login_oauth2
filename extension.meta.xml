@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension id="members_login_oauth2" status="released" xmlns="http://getsymphony.com/schemas/extension/1.0">
+	<name>Members: oAuth 2 Login</name>
+	<description>
+		Logs in users usign oAuth 2 oAuth
+	</description>
+	<repo type="github">https://github.com/symphonycms/members_login_oauth2</repo>
+	<url type="issues">https://github.com/symphonycms/members_login_oauth2/issues</url>
+	<types>
+		<type>Members</type>
+		<type>Third Party Integration</type>
+		<type>oAuth 2</type>
+	</types>
+	<dependencies>
+		<dependency version="1.9.0">members</dependency>
+	</dependencies>
+	<authors>
+		<author>
+			<name github="symphonycms" symphony="symphonycms" twitter="symphonycms">Symphony Community</name>
+			<website>https://www.getsymphony.com/</website>
+		</author>
+	</authors>
+	<releases>
+		<release version="1.0.0" date="2018-04-10" min="2.7.0" max="2.x.x">
+			- First release
+		</release>
+	</releases>
+</extension>
