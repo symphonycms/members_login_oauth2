@@ -64,13 +64,17 @@ class eventmembers_oauth2_login extends Event
         ]);
         // login
         if (is_array($_POST['member-oauth2-action']) && isset($_POST['member-oauth2-action']['login'])) {
+            // Set options
             $_SESSION['OAUTH_SERVICE'] = 'oauth2';
             $_SESSION['OAUTH_START_URL'] = $_POST['redirect'];
             $_SESSION['OAUTH_MEMBERS_SECTION_ID'] = empty($_POST['members-section-id']) ? null : General::intval($_REQUEST['members-section-id']);
+            // Clean up
             $_SESSION['OAUTH_TOKEN'] = null;
+            // This also generates from states and needs to be called first
+            $authorizationUrl = $provider->getAuthorizationUrl();
             $_SESSION['OAUTH_STATE'] = $provider->getState();
-
-            redirect($provider->getAuthorizationUrl());
+            // Redirect to login
+            redirect($authorizationUrl);
         // Code validation
         } elseif (!empty($_GET['code']) && !empty($_GET['state'])) {
             if (empty($_SESSION['OAUTH_STATE']) || $_GET['state'] !== $_SESSION['OAUTH_STATE']) {
@@ -81,56 +85,54 @@ class eventmembers_oauth2_login extends Event
                 'code' => $_GET['code']
             ]);
 
-            if (!$accessToken) {
+            if (!$accessToken || !($token = $accessToken->getToken())) {
                 throw new Exception('Could not get access token');
             }
 
-            if (is_object($response) && isset($response->screen_name)) {
-                $_SESSION['OAUTH_TIMESTAMP'] = time();
-                $_SESSION['ACCESS_TOKEN'] = $access_token_response['oauth_token'];
-                $_SESSION['ACCESS_TOKEN_SECRET'] = $access_token_response['oauth_token_secret'];
-                $_SESSION['OAUTH_USER_ID'] = $access_token_response['user_id'];
-                $_SESSION['OAUTH_USER_EMAIL'] = $response->email;
-                $_SESSION['OAUTH_USER_NAME'] = $response->screen_name;
-                $_SESSION['OAUTH_USER_IMG'] = $response->profile_image_url;
-                $_SESSION['OAUTH_USER_CITY'] = $response->location;
-                $edriver = Symphony::ExtensionManager()->create('members');
-                $edriver->setMembersSection($_SESSION['OAUTH_MEMBERS_SECTION_ID']);
-                $femail = $edriver->getField('email');
-                $mdriver = $edriver->getMemberDriver();
-                $email = $response->email;
-                if (!$email) {
-                    $email = "oauth2" . $response->screen_name . ".com";
+            $_SESSION['OAUTH_TIMESTAMP'] = time();
+            $_SESSION['ACCESS_TOKEN'] = $token;
+            $_SESSION['REFRESH_TOKEN'] = $accessToken->getRefreshToken();
+
+            $resourceOwner = $provider->getResourceOwner($accessToken);
+            $owner = $resourceOwner->toArray();
+
+            var_dump($_SESSION, $resourceOwner);
+
+            $_SESSION['OAUTH_USER_ID'] = $access_token_response['user_id'];
+            $_SESSION['OAUTH_USER_EMAIL'] = $response->email;
+            $_SESSION['OAUTH_USER_NAME'] = $response->screen_name;
+            $_SESSION['OAUTH_USER_IMG'] = $response->profile_image_url;
+            $_SESSION['OAUTH_USER_CITY'] = $response->location;
+            $edriver = Symphony::ExtensionManager()->create('members');
+            $edriver->setMembersSection($_SESSION['OAUTH_MEMBERS_SECTION_ID']);
+            $femail = $edriver->getField('email');
+            $mdriver = $edriver->getMemberDriver();
+            $email = $response->email;
+            if (!$email) {
+                $email = "oauth2" . $response->screen_name . ".com";
+            }
+            $m = $femail->fetchMemberIDBy($email);
+            if (!$m) {
+                $m = new Entry();
+                $m->set('section_id', $_SESSION['OAUTH_MEMBERS_SECTION_ID']);
+                $m->setData($femail->get('id'), array('value' => $email));
+                $mfHandle = Symphony::Configuration()->get('oauth2-handle-field', 'members_oauth2_login');
+                if ($mfHandle) {
+                    $m->setData(General::intval($mfHandle), array(
+                        'value' => $response->screen_name,
+                    ));
                 }
-                $m = $femail->fetchMemberIDBy($email);
-                if (!$m) {
-                    $m = new Entry();
-                    $m->set('section_id', $_SESSION['OAUTH_MEMBERS_SECTION_ID']);
-                    $m->setData($femail->get('id'), array('value' => $email));
-                    $mfHandle = Symphony::Configuration()->get('oauth2-handle-field', 'members_oauth2_login');
-                    if ($mfHandle) {
-                        $m->setData(General::intval($mfHandle), array(
-                            'value' => $response->screen_name,
-                        ));
-                    }
-                    $m->commit();
-                    $m = $m->get('id');
-                }
-                $_SESSION['OAUTH_MEMBER_ID'] = $m;
-                $login = $mdriver->login(array(
-                    'email' => $email
-                ));
-                if ($login) {
-                    redirect($_SESSION['OAUTH_START_URL']);
-                } else {
-                    throw new Exception('oAuth 2 login failed');
-                }
+                $m->commit();
+                $m = $m->get('id');
+            }
+            $_SESSION['OAUTH_MEMBER_ID'] = $m;
+            $login = $mdriver->login(array(
+                'email' => $email
+            ));
+            if ($login) {
+                redirect($_SESSION['OAUTH_START_URL']);
             } else {
-                $_SESSION['OAUTH_SERVICE'] = null;
-                $_SESSION['ACCESS_TOKEN'] = null;
-                $_SESSION['OAUTH_TIMESTAMP'] = 0;
-                $_SESSION['OAUTH_MEMBER_ID'] = null;
-                session_destroy();
+                throw new Exception('oAuth 2 login failed');
             }
         // logout
         } elseif (is_array($_POST['member-oauth2-action']) && isset($_POST['member-oauth2-action']['logout']) ||
