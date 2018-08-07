@@ -6,6 +6,8 @@ require_once(EXTENSIONS . '/members_login_oauth2/vendor/autoload.php');
 
 class eventmembers_oauth2_login extends Event
 {
+    const SETTINGS_GROUP = 'members_oauth2_login';
+
     public static function about()
     {
         return array(
@@ -49,18 +51,18 @@ class eventmembers_oauth2_login extends Event
 
     public function trigger()
     {
-        $OAUTH2_CONSUMER_KEY = Symphony::Configuration()->get('key', 'members_oauth2_login');
-        $OAUTH2_CONSUMER_SECRET = Symphony::Configuration()->get('secret', 'members_oauth2_login');
+        $OAUTH2_CONSUMER_KEY = Symphony::Configuration()->get('key', self::SETTINGS_GROUP);
+        $OAUTH2_CONSUMER_SECRET = Symphony::Configuration()->get('secret', self::SETTINGS_GROUP);
         if (!$OAUTH2_CONSUMER_KEY || !$OAUTH2_CONSUMER_SECRET) {
             throw new Exception('Could not find either the key or the secret');
         }
         $provider = new \League\OAuth2\Client\Provider\GenericProvider([
             'clientId' => $OAUTH2_CONSUMER_KEY,
             'clientSecret' => $OAUTH2_CONSUMER_SECRET,
-            'redirectUri' => Symphony::Configuration()->get('redirect-uri', 'members_oauth2_login'),
-            'urlAuthorize' => Symphony::Configuration()->get('url-authorize', 'members_oauth2_login'),
-            'urlAccessToken' => Symphony::Configuration()->get('url-access-token', 'members_oauth2_login'),
-            'urlResourceOwnerDetails' => Symphony::Configuration()->get('url-resource-owner', 'members_oauth2_login'),
+            'redirectUri' => Symphony::Configuration()->get('redirect-uri', self::SETTINGS_GROUP),
+            'urlAuthorize' => Symphony::Configuration()->get('url-authorize', self::SETTINGS_GROUP),
+            'urlAccessToken' => Symphony::Configuration()->get('url-access-token', self::SETTINGS_GROUP),
+            'urlResourceOwnerDetails' => Symphony::Configuration()->get('url-resource-owner', self::SETTINGS_GROUP),
         ]);
         // login
         if (is_array($_POST['member-oauth2-action']) && isset($_POST['member-oauth2-action']['login'])) {
@@ -116,7 +118,7 @@ class eventmembers_oauth2_login extends Event
                 $m = new Entry();
                 $m->set('section_id', $_SESSION['OAUTH_MEMBERS_SECTION_ID']);
                 $m->setData($femail->get('id'), array('value' => $email));
-                $mfHandle = Symphony::Configuration()->get('oauth2-handle-field', 'members_oauth2_login');
+                $mfHandle = Symphony::Configuration()->get('oauth2-handle-field', self::SETTINGS_GROUP);
                 if ($mfHandle) {
                     $m->setData(General::intval($mfHandle), array(
                         'value' => $response->screen_name,
