@@ -98,7 +98,7 @@ class eventmembers_oauth2_login extends Event
             $resourceOwner = $provider->getResourceOwner($accessToken);
             $owner = $resourceOwner->toArray();
 
-            var_dump($_SESSION, $resourceOwner);
+            var_dump($_SESSION, $resourceOwner);die;
 
             $_SESSION['OAUTH_USER_ID'] = $access_token_response['user_id'];
             $_SESSION['OAUTH_USER_EMAIL'] = $response->email;
