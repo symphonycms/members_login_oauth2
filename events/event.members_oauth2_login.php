@@ -91,47 +91,50 @@ class eventmembers_oauth2_login extends Event
                 throw new Exception('Could not get access token');
             }
 
+            // Start login process
             $_SESSION['OAUTH_TIMESTAMP'] = time();
             $_SESSION['ACCESS_TOKEN'] = $token;
             $_SESSION['REFRESH_TOKEN'] = $accessToken->getRefreshToken();
 
+            // Get user info
             $resourceOwner = $provider->getResourceOwner($accessToken);
             $owner = $resourceOwner->toArray();
 
-            var_dump($_SESSION, $resourceOwner);die;
-
-            $_SESSION['OAUTH_USER_ID'] = $access_token_response['user_id'];
-            $_SESSION['OAUTH_USER_EMAIL'] = $response->email;
-            $_SESSION['OAUTH_USER_NAME'] = $response->screen_name;
-            $_SESSION['OAUTH_USER_IMG'] = $response->profile_image_url;
-            $_SESSION['OAUTH_USER_CITY'] = $response->location;
+            // Get members extensions infos
             $edriver = Symphony::ExtensionManager()->create('members');
             $edriver->setMembersSection($_SESSION['OAUTH_MEMBERS_SECTION_ID']);
             $femail = $edriver->getField('email');
-            $mdriver = $edriver->getMemberDriver();
-            $email = $response->email;
-            if (!$email) {
-                $email = "oauth2" . $response->screen_name . ".com";
+            if (!$femail) {
+                throw new Exception('Your member section does not have an email field. Please add one.');
             }
+            $mdriver = $edriver->getMemberDriver();
+            $email = $owner['mail'];
+            if (!$email) {
+                throw new Exception('User does not have an email, can not continue.');
+            }
+
+            // Try to find member
             $m = $femail->fetchMemberIDBy($email);
             if (!$m) {
+                // Create new member
                 $m = new Entry();
                 $m->set('section_id', $_SESSION['OAUTH_MEMBERS_SECTION_ID']);
                 $m->setData($femail->get('id'), array('value' => $email));
-                $mfHandle = Symphony::Configuration()->get('oauth2-handle-field', self::SETTINGS_GROUP);
-                if ($mfHandle) {
-                    $m->setData(General::intval($mfHandle), array(
-                        'value' => $response->screen_name,
-                    ));
-                }
                 $m->commit();
                 $m = $m->get('id');
             }
-            $_SESSION['OAUTH_MEMBER_ID'] = $m;
+            // Login the user
             $login = $mdriver->login(array(
                 'email' => $email
             ));
             if ($login) {
+                // Set login info
+                $_SESSION['OAUTH_MEMBER_ID'] = $m;
+                $_SESSION['OAUTH_USER_ID'] = $accessToken->getResourceOwnerId();
+                $_SESSION['OAUTH_USER_EMAIL'] = $email;
+                $_SESSION['OAUTH_USER_NAME'] = null;
+                $_SESSION['OAUTH_USER_IMG'] = null;
+                $_SESSION['OAUTH_USER_CITY'] = null;
                 redirect($_SESSION['OAUTH_START_URL']);
             } else {
                 throw new Exception('oAuth 2 login failed');
