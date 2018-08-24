@@ -103,9 +103,16 @@ class eventmembers_oauth2_login extends Event
             // Get members extensions infos
             $edriver = Symphony::ExtensionManager()->create('members');
             $edriver->setMembersSection($_SESSION['OAUTH_MEMBERS_SECTION_ID']);
-            $femail = $edriver->getField('email');
+            $fpass = $edriver->getField('authentication');
+            if ($fpass) {
+                throw new Exception('Your member section cannot contain a password field. Please a member section without one.');
+            }
+            $femail = $edriver->getField('identity');
             if (!$femail) {
-                throw new Exception('Your member section does not have an email field. Please add one.');
+                $femail = $edriver->getField('email');
+            }
+            if (!$femail) {
+                throw new Exception('Your member section does not have an identity (username/email) field. Please add one.');
             }
             $mdriver = $edriver->getMemberDriver();
             $email = $owner['mail'];
