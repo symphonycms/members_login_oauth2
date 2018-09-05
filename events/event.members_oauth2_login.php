@@ -122,6 +122,8 @@ class eventmembers_oauth2_login extends Event
 
             // Try to find member
             $m = $femail->fetchMemberIDBy($email);
+            // Clean global errors
+            extension_Members::$_errors = array();
             if (!$m) {
                 // Create new member
                 $m = new Entry();
@@ -134,13 +136,17 @@ class eventmembers_oauth2_login extends Event
                 $m->commit();
                 $m = $m->get('id');
             }
+            // Set the id in session to make login work
+            $_SESSION['OAUTH_MEMBER_ID'] = $m;
             // Login the user
-            $login = $mdriver->login(array(
-                'email' => $email
-            ));
+            $ldata = array(
+                'email' => $email,
+                'username' => $email,
+            );
+            $login = $mdriver->login($ldata);
+            // If it worked
             if ($login) {
-                // Set login info
-                $_SESSION['OAUTH_MEMBER_ID'] = $m;
+                // Set the other login info
                 $_SESSION['OAUTH_USER_ID'] = $accessToken->getResourceOwnerId();
                 $_SESSION['OAUTH_USER_EMAIL'] = $email;
                 $_SESSION['OAUTH_USER_NAME'] = null;
@@ -148,7 +154,10 @@ class eventmembers_oauth2_login extends Event
                 $_SESSION['OAUTH_USER_CITY'] = null;
                 redirect($_SESSION['OAUTH_START_URL']);
             } else {
-                throw new Exception('oAuth 2 login failed');
+                unset($_SESSION['OAUTH_MEMBER_ID']);
+                unset($_SESSION['ACCESS_TOKEN']);
+                unset($_SESSION['REFRESH_TOKEN']);
+                throw new Exception('oAuth 2 login failed ' . current(extension_Members::$_errors));
             }
         // logout
         } elseif (is_array($_POST['member-oauth2-action']) && isset($_POST['member-oauth2-action']['logout']) ||
@@ -157,6 +166,9 @@ class eventmembers_oauth2_login extends Event
             $_SESSION['OAUTH_START_URL'] = null;
             $_SESSION['OAUTH_MEMBERS_SECTION_ID'] = null;
             $_SESSION['OAUTH_TOKEN'] = null;
+            $_SESSION['ACCESS_TOKEN'] = null;
+            $_SESSION['REFRESH_TOKEN'] = null;
+            $_SESSION['OAUTH_MEMBER_ID'] = null;
             session_destroy();
         }
     }
