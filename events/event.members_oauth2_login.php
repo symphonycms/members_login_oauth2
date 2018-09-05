@@ -126,7 +126,11 @@ class eventmembers_oauth2_login extends Event
                 // Create new member
                 $m = new Entry();
                 $m->set('section_id', $_SESSION['OAUTH_MEMBERS_SECTION_ID']);
-                $m->setData($femail->get('id'), array('value' => $email));
+                $fdata = array('value' => $email);
+                if ($femail instanceof fieldMemberUsername) {
+                    $fdata['handle'] = Lang::createHandle($email);
+                }
+                $m->setData($femail->get('id'), $fdata);
                 $m->commit();
                 $m = $m->get('id');
             }
