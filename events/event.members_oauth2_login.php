@@ -40,13 +40,13 @@ class eventmembers_oauth2_login extends Event
 
     public function load()
     {
-        //try {
+        try {
             return $this->trigger();
-        //} catch (Exception $ex) {
-        //    if (Symphony::Log()) {
-        //        Symphony::Log()->pushExceptionToLog($ex, true);
-        //    }
-        //}
+        } catch (Exception $ex) {
+            if (Symphony::Log()) {
+                Symphony::Log()->pushExceptionToLog($ex, true);
+            }
+        }
     }
 
     public function trigger()
